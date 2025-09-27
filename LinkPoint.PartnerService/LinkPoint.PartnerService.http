@@ -1,0 +1,6 @@
+@LinkPoint.PartnerService_HostAddress = http://localhost:5018
+
+GET {{LinkPoint.PartnerService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
