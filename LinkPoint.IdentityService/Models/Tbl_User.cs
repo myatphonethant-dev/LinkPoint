@@ -23,3 +23,11 @@ public class Tbl_User
 
     public DateTime? BirthDate { get; set; }
 }
+
+public record RegisterRequest(string Username, string Email, string Password);
+
+public record LoginRequest(string Email, string Password);
+
+public record LoginResponse(string Token, DateTime ExpiresAt);
+
+public record UpdateProfileRequest(string? Username, string? AvatarUrl);

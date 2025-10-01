@@ -1,14 +1,22 @@
 using LinkPoint.IdentityService.Endpoints;
 using LinkPoint.IdentityService.Services.Token;
 using LinkPoint.IdentityService.Services.User;
+using LinkPoint.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<IUserRepository, UserService>();
-builder.Services.AddSingleton<ITokenRepository, TokenService>();
+var mongoSettings = builder.Configuration
+    .GetSection("MongoDbSettings")
+    .Get<MongoDbSettings>();
+
+builder.Services.AddSingleton(mongoSettings!);
+builder.Services.AddSingleton<MongoDbContext>();
+
+builder.Services.AddScoped<ITokenRepository, TokenService>();
+builder.Services.AddScoped<IUserRepository, UserService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -31,6 +39,8 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+app.UseHttpsRedirection();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -43,8 +53,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseHttpsRedirection();
 
 app.MapIdentityEndpoints();
 

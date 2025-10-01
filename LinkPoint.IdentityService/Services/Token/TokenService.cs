@@ -16,48 +16,21 @@ public class TokenService : ITokenRepository
 
     public string GenerateToken(Guid userId, string username)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var key = _config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
+        var issuer = _config["Jwt:Issuer"] ?? "LinkPoint.IdentityService";
+        var audience = _config["Jwt:Audience"] ?? "LinkPoint.Services";
+        var expiresHours = int.TryParse(_config["Jwt:ExpiresHours"], out var h) ? h : 1;
 
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
-            new Claim(JwtRegisteredClaimNames.UniqueName, username)
+            new Claim(JwtRegisteredClaimNames.UniqueName, username),
+            new Claim("uid", userId.ToString())
         };
 
-        var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(12),
-            signingCredentials: creds
-        );
+        var creds = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256);
 
+        var token = new JwtSecurityToken(issuer, audience, claims, expires: DateTime.UtcNow.AddHours(expiresHours), signingCredentials: creds);
         return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    public ClaimsPrincipal ValidateToken(string token)
-    {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
-        var tokenHandler = new JwtSecurityTokenHandler();
-
-        try
-        {
-            var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidIssuer = "yourapp",
-                ValidAudience = "yourapp",
-                IssuerSigningKey = key
-            }, out var validatedToken);
-
-            return principal;
-        }
-        catch
-        {
-            return null!;
-        }
     }
 }

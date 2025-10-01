@@ -2,16 +2,16 @@ using LinkPoint.Infrastructure.Data;
 using LinkPoint.PartnerService.Data;
 using LinkPoint.PartnerService.Endpoints;
 using LinkPoint.PartnerService.Services;
-using LinkPoint.SharedKernel.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
-MongoDbSettings mongoSettings = builder.Configuration
+var mongoSettings = builder.Configuration
     .GetSection("MongoDbSettings")
-    .Get<MongoDbSettings>()!;
+    .Get<MongoDbSettings>();
 
-builder.Services.AddSingleton(mongoSettings);
+builder.Services.AddSingleton(mongoSettings!);
 builder.Services.AddSingleton<MongoDbContext>();
+
 builder.Services.AddScoped<IPartnerService, PartnerService>();
 
 builder.Services.AddEndpointsApiExplorer();

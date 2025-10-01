@@ -7,7 +7,7 @@ public class Tbl_Partner
 {
     [BsonId]
     [BsonRepresentation(BsonType.String)]
-    public string PartnerId { get; set; }
+    public string PartnerId { get; set; } = Guid.NewGuid().ToString();
 
     public string Name { get; set; } = default!;
 

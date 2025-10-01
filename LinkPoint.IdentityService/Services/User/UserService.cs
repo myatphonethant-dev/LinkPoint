@@ -1,8 +1,8 @@
-﻿using LinkPoint.IdentityService.Services.Token;
-using MongoDB.Driver;
+﻿using LinkPoint.IdentityService.Models;
+using LinkPoint.IdentityService.Services.Token;
 using LinkPoint.Infrastructure.Data;
+using MongoDB.Driver;
 using static LinkPoint.SharedKernel.DevCode;
-using LinkPoint.IdentityService.Models;
 
 namespace LinkPoint.IdentityService.Services.User;
 
@@ -18,24 +18,16 @@ public class UserService : IUserRepository
     }
 
     public async Task<Tbl_User?> GetByIdAsync(Guid userId)
-    {
-        return await _usersCollection.Find(u => u.UserId == userId).FirstOrDefaultAsync();
-    }
+        => await _usersCollection.Find(u => u.UserId == userId).FirstOrDefaultAsync();
 
     public async Task<Tbl_User?> GetByEmailAsync(string email)
-    {
-        return await _usersCollection.Find(u => u.Email == email).FirstOrDefaultAsync();
-    }
+        => await _usersCollection.Find(u => u.Email.ToLower() == email.ToLower()).FirstOrDefaultAsync();
 
     public async Task CreateAsync(Tbl_User user)
-    {
-        await _usersCollection.InsertOneAsync(user);
-    }
+        => await _usersCollection.InsertOneAsync(user);
 
     public async Task UpdateAsync(Tbl_User user)
-    {
-        await _usersCollection.ReplaceOneAsync(u => u.UserId == user.UserId, user);
-    }
+        => await _usersCollection.ReplaceOneAsync(u => u.UserId == user.UserId, user);
 
     public async Task<Tbl_User> RegisterAsync(RegisterRequestModel request)
     {
@@ -52,25 +44,25 @@ public class UserService : IUserRepository
             PasswordHash = HashPassword(request.Password),
             CreatedAt = DateTime.UtcNow
         };
-
         await CreateAsync(user);
+
+        user.PasswordHash = null!;
         return user;
     }
 
     public async Task<LoginResponseModel> LoginAsync(LoginRequestModel request)
     {
         var user = await GetByEmailAsync(request.Email);
-        if (user is null || !VerifyPassword(request.Password, user.PasswordHash))
+        if (user is null)
         {
             throw new UnauthorizedAccessException("Invalid credentials");
         }
 
-        var token = _tokenRepository.GenerateToken(user!.UserId, user.Username);
-        return new LoginResponseModel
-        {
-            Token = token,
-            ExpiresAt = DateTime.UtcNow.AddHours(1)
-        };
+        var ok = VerifyPassword(user.PasswordHash, request.Password);
+        if (!ok) throw new UnauthorizedAccessException("Invalid credentials");
+
+        var token = _tokenRepository.GenerateToken(user.UserId, user.Username);
+        return new LoginResponseModel(token, DateTime.UtcNow.AddHours(1));
     }
 
     public async Task<Tbl_User?> UpdateProfileAsync(Guid userId, string? username, string? avatarUrl)
@@ -85,6 +77,7 @@ public class UserService : IUserRepository
         user.AvatarUrl = avatarUrl ?? user.AvatarUrl;
 
         await UpdateAsync(user);
+        user.PasswordHash = null!;
         return user;
     }
 }

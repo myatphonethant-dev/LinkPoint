@@ -1,5 +1,6 @@
 ﻿using LinkPoint.IdentityService.Models;
 using LinkPoint.IdentityService.Services.User;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LinkPoint.IdentityService.Endpoints;
@@ -8,69 +9,39 @@ public static class IdentityEndpoints
 {
     public static void MapIdentityEndpoints(this IEndpointRouteBuilder app)
     {
+        var usersGroup = app.MapGroup("/users").WithTags("User");
 
-        var group = app.MapGroup("/users").WithTags("User");
+        usersGroup.MapPost("/register", async ([FromBody] RegisterRequestModel request, IUserRepository repo) =>
+        {
+            var user = await repo.RegisterAsync(request);
+            return Results.Created($"/users/{user.UserId}", new { user.UserId, user.Username, user.Email, user.CreatedAt });
+        })
+        .WithOpenApi();
 
-        group.MapPost("/register", async (
-            [FromBody] RegisterRequestModel request,
-            IUserRepository userRepo) =>
+        usersGroup.MapPost("/login", async ([FromBody] LoginRequestModel request, IUserRepository repo) =>
         {
             try
             {
-                var user = await userRepo.RegisterAsync(request);
-                return Results.Created($"/users/{user.UserId}", new
-                {
-                    user.UserId,
-                    user.Username,
-                    user.Email,
-                    user.CreatedAt
-                });
-            }
-            catch (Exception ex)
-            {
-                return Results.BadRequest(new { message = ex.Message });
-            }
-        });
-
-        group.MapPost("/login", async (
-            [FromBody] LoginRequestModel request,
-            IUserRepository userRepo) =>
-        {
-            try
-            {
-                var response = await userRepo.LoginAsync(request);
+                var response = await repo.LoginAsync(request);
                 return Results.Ok(response);
             }
-            catch (Exception ex)
+            catch
             {
                 return Results.Unauthorized();
             }
-        });
+        })
+        .WithOpenApi();
 
-        group.MapPut("/{userId:guid}", async (
-            Guid userId,
-            [FromBody] UpdateProfileRequestModel request,
-            IUserRepository userRepo) =>
+        usersGroup.MapPut("/{userId:guid}", [Authorize] async (Guid userId, [FromBody] UpdateProfileRequestModel dto, IUserRepository repo, HttpContext ctx) =>
         {
-            try
-            {
-                var user = await userRepo.UpdateProfileAsync(userId, request.Username, request.AvatarUrl);
-                return user == null
-                    ? Results.NotFound()
-                    : Results.Ok(new
-                    {
-                        user.UserId,
-                        user.Username,
-                        user.Email,
-                        user.AvatarUrl
-                    });
-            }
-            catch (Exception ex)
-            {
-                return Results.BadRequest(new { message = ex.Message });
-            }
-        });
+            var uidClaim = ctx.User.FindFirst("uid")?.Value;
+            if (uidClaim == null || uidClaim != userId.ToString())
+                return Results.Forbid();
+
+            var user = await repo.UpdateProfileAsync(userId, dto.Username, dto.AvatarUrl);
+            return user == null ? Results.NotFound() : Results.Ok(new { user.UserId, user.Username, user.Email, user.AvatarUrl });
+        })
+        .RequireAuthorization()
+        .WithOpenApi();
     }
 }
-
-public record UpdateProfileRequestModel(string? Username, string? AvatarUrl);
