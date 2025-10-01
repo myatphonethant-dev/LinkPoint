@@ -11,9 +11,10 @@ public static class PartnerEndpoints
     {
         var partnersGroup = app.MapGroup("/partners").WithTags("Partner");
 
-        partnersGroup.MapGet("/", (IPartnerService service) =>
+        partnersGroup.MapGet("/", async (IPartnerService service) =>
         {
-            var partners = service.GetAll()
+            var partners = await service.GetAll();
+            var result = partners
                 .OrderByDescending(p => p.PartnerId)
                 .Select(p => new
                 {
@@ -27,43 +28,42 @@ public static class PartnerEndpoints
         })
         .WithOpenApi(op => { op.Summary = "Get All Partners"; return op; });
 
-        partnersGroup.MapGet("/{id}", (IPartnerService service, string id) =>
+        partnersGroup.MapGet("/{id}", async (IPartnerService service, string id) =>
         {
-            var p = service.GetById(id);
-            if (p == null) return Results.NotFound();
+            var partner = await service.GetById(id)!;
+            if (partner is null) return Results.NotFound();
 
             return Results.Ok(new
             {
-                p.PartnerId,
-                p.Name,
-                p.Email,
-                p.Phone,
-                CreatedAt = p.CreatedAt.ToString(DateFormat)
+                partner.PartnerId,
+                partner.Name,
+                partner.Email,
+                partner.Phone,
+                CreatedAt = partner.CreatedAt.ToString(DateFormat)
             });
         })
         .WithOpenApi(op => { op.Summary = "Get Partner By PartnerId"; return op; });
 
-        partnersGroup.MapPost("/", (IPartnerService service, Tbl_Partner partner) =>
+        partnersGroup.MapPost("/", async (IPartnerService service, Tbl_Partner partner) =>
         {
             partner.PartnerId = Guid.NewGuid().ToString();
-            service.Create(partner);
+            await service.Create(partner);
             return Results.Created($"/partners/{partner.PartnerId}", partner);
         })
         .WithOpenApi(op => { op.Summary = "Create Partner"; return op; });
 
-        partnersGroup.MapPut("/{id}", (IPartnerService service, string id, Tbl_Partner update) =>
+        partnersGroup.MapPut("/{id}", async (IPartnerService service, string id, Tbl_Partner update) =>
         {
-            service.Update(id, update);
+            await service.Update(id, update);
             return Results.Ok(update);
         })
         .WithOpenApi(op => { op.Summary = "Update Partner"; return op; });
 
-        partnersGroup.MapDelete("/{id}", (IPartnerService service, string id) =>
+        partnersGroup.MapDelete("/{id}", async (IPartnerService service, string id) =>
         {
-            service.Delete(id);
+            await service.Delete(id);
             return Results.NoContent();
         })
-        //.WithName("Delete Partner")
         .WithOpenApi(op => { op.Summary = "Delete Partner"; return op; });
     }
 }

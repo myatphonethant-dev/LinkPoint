@@ -1,0 +1,90 @@
+﻿using LinkPoint.IdentityService.Services.Token;
+using MongoDB.Driver;
+using LinkPoint.Infrastructure.Data;
+using static LinkPoint.SharedKernel.DevCode;
+using LinkPoint.IdentityService.Models;
+
+namespace LinkPoint.IdentityService.Services.User;
+
+public class UserService : IUserRepository
+{
+    private readonly IMongoCollection<Tbl_User> _usersCollection;
+    private readonly ITokenRepository _tokenRepository;
+
+    public UserService(MongoDbContext dbContext, ITokenRepository tokenRepository)
+    {
+        _usersCollection = dbContext.GetCollection<Tbl_User>("Tbl_User");
+        _tokenRepository = tokenRepository;
+    }
+
+    public async Task<Tbl_User?> GetByIdAsync(Guid userId)
+    {
+        return await _usersCollection.Find(u => u.UserId == userId).FirstOrDefaultAsync();
+    }
+
+    public async Task<Tbl_User?> GetByEmailAsync(string email)
+    {
+        return await _usersCollection.Find(u => u.Email == email).FirstOrDefaultAsync();
+    }
+
+    public async Task CreateAsync(Tbl_User user)
+    {
+        await _usersCollection.InsertOneAsync(user);
+    }
+
+    public async Task UpdateAsync(Tbl_User user)
+    {
+        await _usersCollection.ReplaceOneAsync(u => u.UserId == user.UserId, user);
+    }
+
+    public async Task<Tbl_User> RegisterAsync(RegisterRequestModel request)
+    {
+        var existing = await GetByEmailAsync(request.Email);
+        if (existing is not null)
+        {
+            throw new Exception("Email already registered");
+        }
+
+        var user = new Tbl_User
+        {
+            Username = request.Username,
+            Email = request.Email,
+            PasswordHash = HashPassword(request.Password),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await CreateAsync(user);
+        return user;
+    }
+
+    public async Task<LoginResponseModel> LoginAsync(LoginRequestModel request)
+    {
+        var user = await GetByEmailAsync(request.Email);
+        if (user is null || !VerifyPassword(request.Password, user.PasswordHash))
+        {
+            throw new UnauthorizedAccessException("Invalid credentials");
+        }
+
+        var token = _tokenRepository.GenerateToken(user!.UserId, user.Username);
+        return new LoginResponseModel
+        {
+            Token = token,
+            ExpiresAt = DateTime.UtcNow.AddHours(1)
+        };
+    }
+
+    public async Task<Tbl_User?> UpdateProfileAsync(Guid userId, string? username, string? avatarUrl)
+    {
+        var user = await GetByIdAsync(userId);
+        if (user is null)
+        {
+            throw new Exception("User not found");
+        }
+
+        user.Username = username ?? user.Username;
+        user.AvatarUrl = avatarUrl ?? user.AvatarUrl;
+
+        await UpdateAsync(user);
+        return user;
+    }
+}

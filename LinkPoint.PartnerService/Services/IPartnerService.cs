@@ -4,13 +4,13 @@ namespace LinkPoint.PartnerService.Services;
 
 public interface IPartnerService
 {
-    List<Tbl_Partner> GetAll();
+    Task<IEnumerable<Tbl_Partner>> GetAll();
 
-    Tbl_Partner? GetById(string id);
+    Task<Tbl_Partner>? GetById(string id);
 
-    void Create(Tbl_Partner partner);
+    Task Create(Tbl_Partner partner);
 
-    void Update(string id, Tbl_Partner partner);
+    Task Update(string id, Tbl_Partner partner);
 
-    void Delete(string id);
+    Task Delete(string id);
 }

@@ -14,16 +14,17 @@ public class PartnerService : IPartnerService
         _partners = dbContext.GetCollection<Tbl_Partner>("Tbl_Partner");
     }
 
-    public List<Tbl_Partner> GetAll() => _partners.Find(_ => true).ToList();
+    public async Task<IEnumerable<Tbl_Partner>> GetAll() => 
+        await _partners.Find(_ => true).ToListAsync();
 
-    public Tbl_Partner? GetById(string id) =>
-        _partners.Find(p => p.PartnerId == id).FirstOrDefault();
+    public async Task<Tbl_Partner>? GetById(string id) =>
+        await _partners.Find(p => p.PartnerId == id).FirstOrDefaultAsync();
 
-    public void Create(Tbl_Partner partner) => _partners.InsertOne(partner);
+    public async Task Create(Tbl_Partner partner) => await _partners.InsertOneAsync(partner);
 
-    public void Update(string id, Tbl_Partner partner) =>
-        _partners.ReplaceOne(p => p.PartnerId == id, partner);
+    public async Task Update(string id, Tbl_Partner partner) =>
+        await _partners.ReplaceOneAsync(p => p.PartnerId == id, partner);
 
-    public void Delete(string id) =>
-        _partners.DeleteOne(p => p.PartnerId == id);
+    public async Task Delete(string id) =>
+        await _partners.DeleteOneAsync(p => p.PartnerId == id);
 }

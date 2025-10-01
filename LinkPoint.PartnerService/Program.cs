@@ -6,7 +6,6 @@ using LinkPoint.SharedKernel.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load MongoDB settings
 MongoDbSettings mongoSettings = builder.Configuration
     .GetSection("MongoDbSettings")
     .Get<MongoDbSettings>()!;
@@ -15,7 +14,6 @@ builder.Services.AddSingleton(mongoSettings);
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IPartnerService, PartnerService>();
 
-// Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -29,7 +27,6 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Enable Swagger in Development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -43,7 +40,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Map minimal API endpoints
 app.MapPartnerEndpoints();
 
 app.Run();
